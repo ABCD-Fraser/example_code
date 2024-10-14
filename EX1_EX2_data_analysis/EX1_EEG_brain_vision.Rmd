@@ -1,0 +1,300 @@
+## N1 Amplitude in P3 and P4 channels
+
+```{r}
+# Load necessary libraries
+library(readxl)
+library(tidyr)
+library(dplyr)
+
+
+exclude = c()
+
+# Load the data from the Excel file
+# Set the path to your Excel file
+file_path <- "EX1_weighted_peaks.xlsx"
+
+# Read the Excel file into R
+n1_data <- read_excel(file_path)
+
+# Filter the data to include only rows where the component is 'N1'
+n1_data <- n1_data %>% filter(Component == "N1")
+
+# Reshape the data into long format for repeated measures ANOVA
+n1_voltage <- n1_data %>%
+  select(File, `P3-CLOSE-V`, `P3-MID-V`, `P3-FAR-V`, `P4-CLOSE-V`, `P4-MID-V`, `P4-FAR-V`) %>%
+  pivot_longer(cols = starts_with("P"), 
+               names_to = c("Channel", "Condition"),
+               names_sep = "-", 
+               values_to = "Voltage") %>%
+  mutate(Channel = ifelse(grepl("P3", Channel), "P3", "P4"),
+         Condition = ifelse(grepl("CLOSE", Condition), "Close", 
+                            ifelse(grepl("MID", Condition), "Mid", "Far"))) %>% 
+  filter(!File %in% exclude)
+
+
+
+
+
+# Run the repeated-measures ANOVA using aov()
+anova_model <- aov(Voltage ~ Condition * Channel + Error(File/(Condition * Channel)), data = n1_voltage)
+
+# Output the summary of the ANOVA
+summary(anova_model)
+
+# # Post-hoc pairwise comparisons using emmeans
+# # Main effects for Condition
+# condition_emm <- emmeans(anova_model, ~ Channel)
+# pairwise_condition <- pairs(condition_emm)
+# print(pairwise_condition)
+# 
+
+
+
+```
+
+## N1 Latency in P3 and P4 channels
+
+```{r}
+
+# Load necessary libraries
+library(readxl)
+library(tidyr)
+library(dplyr)
+library(emmeans)
+
+# Load the data from the Excel file
+# Set the path to your Excel file
+file_path <- "EX1_weighted_peaks.xlsx"
+
+# Read the Excel file into R
+n1_data <- read_excel(file_path)
+
+# Filter the data to include only rows where the component is 'N1'
+n1_data <- n1_data %>% filter(Component == "N1")
+
+# Reshape the data into long format for repeated measures ANOVA
+n1_latency<- n1_data %>%
+  select(File, `P3-CLOSE-L`, `P3-MID-L`, `P3-FAR-L`, `P4-CLOSE-L`, `P4-MID-L`, `P4-FAR-L`) %>%
+  pivot_longer(cols = starts_with("P"), 
+               names_to = c("Channel", "Condition"),
+               names_sep = "-", 
+               values_to = "Latency") %>%
+  mutate(Channel = ifelse(grepl("P3", Channel), "P3", "P4"),
+         Condition = ifelse(grepl("CLOSE", Condition), "Close", 
+                            ifelse(grepl("MID", Condition), "Mid", "Far"))) %>% 
+  filter(!File %in% exclude) 
+
+# Run the repeated-measures ANOVA using aov()
+anova_model <- aov(Latency ~ Condition * Channel + Error(File/(Condition * Channel)), data = n1_latency)
+
+# Output the summary of the ANOVA
+summary(anova_model)
+
+# Post-hoc pairwise comparisons using emmeans
+# Main effects for Condition
+condition_emm <- emmeans(anova_model, ~ Condition)
+pairwise_condition <- pairs(condition_emm)
+print(pairwise_condition)
+
+
+
+```
+
+## P2 Amplitude in P3 and P4 channels
+
+```{r}
+# Load necessary libraries
+library(readxl)
+library(tidyr)
+library(dplyr)
+
+# Load the data from the Excel file
+# Set the path to your Excel file
+file_path <- "EX1_weighted_peaks.xlsx"
+
+# Read the Excel file into R
+n1_data <- read_excel(file_path)
+
+# Filter the data to include only rows where the component is 'N1'
+n1_data <- n1_data %>% filter(Component == "P2")
+
+# Reshape the data into long format for repeated measures ANOVA
+n1_voltage <- n1_data %>%
+  select(File, `P3-CLOSE-V`, `P3-MID-V`, `P3-FAR-V`, `P4-CLOSE-V`, `P4-MID-V`, `P4-FAR-V`) %>%
+  pivot_longer(cols = starts_with("P"), 
+               names_to = c("Channel", "Condition"),
+               names_sep = "-", 
+               values_to = "Voltage") %>%
+  mutate(Channel = ifelse(grepl("P3", Channel), "P3", "P4"),
+         Condition = ifelse(grepl("CLOSE", Condition), "Close", 
+                            ifelse(grepl("MID", Condition), "Mid", "Far"))) %>% 
+  filter(!File %in% exclude)
+
+
+
+
+
+# Run the repeated-measures ANOVA using aov()
+anova_model <- aov(Voltage ~ Condition * Channel + Error(File/(Condition * Channel)), data = n1_voltage)
+
+# Output the summary of the ANOVA
+summary(anova_model)
+
+# # Post-hoc pairwise comparisons using emmeans
+# # Main effects for Condition
+# condition_emm <- emmeans(anova_model, ~ Channel)
+# pairwise_condition <- pairs(condition_emm)
+# print(pairwise_condition)
+
+
+
+
+```
+
+## P2 Latency in P3 and P4 channels
+
+```{r}
+
+# Load necessary libraries
+library(readxl)
+library(tidyr)
+library(dplyr)
+library(emmeans)
+
+# Load the data from the Excel file
+# Set the path to your Excel file
+file_path <- "EX1_weighted_peaks.xlsx"
+
+# Read the Excel file into R
+n1_data <- read_excel(file_path)
+
+# Filter the data to include only rows where the component is 'N1'
+n1_data <- n1_data %>% filter(Component == "P2")
+
+# Reshape the data into long format for repeated measures ANOVA
+n1_latency<- n1_data %>%
+  select(File, `P3-CLOSE-L`, `P3-MID-L`, `P3-FAR-L`, `P4-CLOSE-L`, `P4-MID-L`, `P4-FAR-L`) %>%
+  pivot_longer(cols = starts_with("P"), 
+               names_to = c("Channel", "Condition"),
+               names_sep = "-", 
+               values_to = "Latency") %>%
+  mutate(Channel = ifelse(grepl("P3", Channel), "P3", "P4"),
+         Condition = ifelse(grepl("CLOSE", Condition), "Close", 
+                            ifelse(grepl("MID", Condition), "Mid", "Far"))) %>% 
+  filter(!File %in% exclude)
+
+# Run the repeated-measures ANOVA using aov()
+anova_model <- aov(Latency ~ Condition * Channel + Error(File/(Condition * Channel)), data = n1_latency)
+
+# Output the summary of the ANOVA
+summary(anova_model)
+
+# # Post-hoc pairwise comparisons using emmeans
+# # Main effects for Condition
+# condition_emm <- emmeans(anova_model, ~ Condition)
+# pairwise_condition <- pairs(condition_emm)
+# print(pairwise_condition)
+# 
+
+
+```
+
+
+## P2 Amplitude in P7 and P8 channels
+
+```{r}
+# Load necessary libraries
+library(readxl)
+library(tidyr)
+library(dplyr)
+
+# Load the data from the Excel file
+# Set the path to your Excel file
+file_path <- "EX1_weighted_peaks.xlsx"
+
+# Read the Excel file into R
+n1_data <- read_excel(file_path)
+
+# Filter the data to include only rows where the component is 'N1'
+n1_data <- n1_data %>% filter(Component == "P2")
+
+# Reshape the data into long format for repeated measures ANOVA
+n1_voltage <- n1_data %>%
+  select(File, `P7-CLOSE-V`, `P7-MID-V`, `P7-FAR-V`, `P8-CLOSE-V`, `P8-MID-V`, `P8-FAR-V`) %>%
+  pivot_longer(cols = starts_with("P"), 
+               names_to = c("Channel", "Condition"),
+               names_sep = "-", 
+               values_to = "Voltage") %>%
+  mutate(Channel = ifelse(grepl("P7", Channel), "P7", "P8"),
+         Condition = ifelse(grepl("CLOSE", Condition), "Close", 
+                            ifelse(grepl("MID", Condition), "Mid", "Far"))) %>% 
+  filter(!File %in% exclude)
+
+
+
+
+
+# Run the repeated-measures ANOVA using aov()
+anova_model <- aov(Voltage ~ Condition * Channel + Error(File/(Condition * Channel)), data = n1_voltage)
+
+# Output the summary of the ANOVA
+summary(anova_model)
+
+# # Post-hoc pairwise comparisons using emmeans
+# # Main effects for Condition
+# condition_emm <- emmeans(anova_model, ~ Channel)
+# pairwise_condition <- pairs(condition_emm)
+# print(pairwise_condition)
+
+
+
+
+```
+
+## P2 Latency in P7 and P8 channels
+
+```{r}
+
+# Load necessary libraries
+library(readxl)
+library(tidyr)
+library(dplyr)
+library(emmeans)
+
+# Load the data from the Excel file
+# Set the path to your Excel file
+file_path <- "EX1_weighted_peaks.xlsx"
+
+# Read the Excel file into R
+n1_data <- read_excel(file_path)
+
+# Filter the data to include only rows where the component is 'N1'
+n1_data <- n1_data %>% filter(Component == "P2")
+
+# Reshape the data into long format for repeated measures ANOVA
+n1_latency<- n1_data %>%
+  select(File, `P7-CLOSE-L`, `P7-MID-L`, `P7-FAR-L`, `P8-CLOSE-L`, `P8-MID-L`, `P8-FAR-L`) %>%
+  pivot_longer(cols = starts_with("P"), 
+               names_to = c("Channel", "Condition"),
+               names_sep = "-", 
+               values_to = "Latency") %>%
+  mutate(Channel = ifelse(grepl("P7", Channel), "P7", "P8"),
+         Condition = ifelse(grepl("CLOSE", Condition), "Close", 
+                            ifelse(grepl("MID", Condition), "Mid", "Far"))) %>% 
+  filter(!File %in% exclude) 
+
+# Run the repeated-measures ANOVA using aov()
+anova_model <- aov(Latency ~ Condition * Channel + Error(File/(Condition * Channel)), data = n1_latency)
+
+# Output the summary of the ANOVA
+summary(anova_model)
+
+# # Post-hoc pairwise comparisons using emmeans
+# # Main effects for Condition
+# condition_emm <- emmeans(anova_model, ~ Condition)
+# pairwise_condition <- pairs(condition_emm)
+# print(pairwise_condition)
+# 
+
+
+```

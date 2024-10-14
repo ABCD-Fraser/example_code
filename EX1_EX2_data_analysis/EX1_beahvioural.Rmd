@@ -1,0 +1,537 @@
+---
+title: "EX1_behavioural_draft"
+output:
+  pdf_document: default
+  html_document: default
+date: "2024-09-20"
+---
+
+# Check trials
+
+import check trials data
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+
+check_df = read.csv('raw_behavioural/EX1_adult_overall_check.csv')
+
+check_df = check_df %>% mutate(trial_half = ifelse((trial_n <= 14), 1,2))
+
+check_summary = check_df %>% 
+  group_by(participant, trial_half) %>%
+  summarise(mean_acc = mean(check_button.corr), mean_RT= mean(check_button.rt, na.rm=TRUE), median_RT = median(check_button.rt, na.rm=TRUE)) %>% 
+  pivot_wider(id_cols = participant, names_from = trial_half, values_from = c(mean_acc, mean_RT, median_RT)) %>% 
+  mutate(differences_acc = mean_acc_1 - mean_acc_2, differences_RT = median_RT_1 - median_RT_2 )
+
+
+```
+
+### Check trial mean accuracy
+
+```{r}
+
+# box plot to check for outliers 
+boxplot(check_summary$differences_acc, main="Boxplot of Accuracy Differences", ylab="Difference between first half and second half")
+
+# shapiro test of the differences
+print('TEST OF NORMALITY OF THE DIFFERENCS')
+shapiro.test(check_summary$differences_acc)
+shapiro.test(check_summary$differences_RT)
+
+#Paired sample t-test
+print('PAIRED T-TEST')
+t.test(check_summary$mean_acc_1, check_summary$mean_acc_2, paired=TRUE)
+
+
+#chance performance 
+hypothetical_value = 0.5
+
+
+# Perform a one-sample t-test for the first half
+print('T-test to compare to chance')
+t.test(check_summary$mean_acc_1, mu = hypothetical_value)
+# Perform a one-sample t-test for the second half
+t.test(check_summary$mean_acc_2, mu = hypothetical_value)
+
+print('PAIRED WILCOXON SIGNED-RANK TEST')
+wilcox.test(check_summary$mean_acc_1, check_summary$mean_acc_2, paired=TRUE)
+
+# Perform a one-sample Wilcoxon signed-rank test for the first half
+print('Wilcoxon Signed-Rank Test to compare to chance for the first half')
+wilcox.test(check_summary$mean_acc_1, mu = hypothetical_value)
+
+# Perform a one-sample Wilcoxon signed-rank test for the second half
+print('Wilcoxon Signed-Rank Test to compare to chance for the second half')
+wilcox.test(check_summary$mean_acc_2, mu = hypothetical_value)
+
+
+
+mean_values_acc = data.frame(
+  Condition = c("First", "Second"),
+  Mean = c(mean(check_summary$mean_acc_1), mean(check_summary$mean_acc_2)),
+  SE = c((sd(check_summary$mean_acc_1) / sqrt(length(check_summary$mean_acc_1))), 
+         (sd(check_summary$mean_acc_2) / sqrt(length(check_summary$mean_acc_2))))
+
+)
+
+# Create the bar plot
+ggplot(mean_values_acc, aes(x = Condition, y = Mean, fill = Condition)) +
+  geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin = Mean - SE, ymax = Mean + SE), width = 0.2) +
+  labs(title = "Mean Accuracy of All Participants", y = "Mean Accuracy", x = "") +
+  theme_minimal()
+
+
+mean_trial_acc = check_df %>% 
+  group_by(trial_n) %>% 
+  summarise(mean_acc = mean(check_button.corr, na.rm=TRUE), mean_acc_sd = sd(check_button.corr, na.rm=TRUE))
+
+# Create the plot
+ggplot(mean_trial_acc, aes(x = trial_n, y = mean_acc)) +
+  geom_line(color = "blue", size = 1.2) +                          # Line plot for median_RT
+  geom_ribbon(aes(ymin = mean_acc - mean_acc_sd, ymax = ifelse((mean_acc + mean_acc_sd) > 1, 1, mean_acc + mean_acc_sd)),   # Shaded area for SD
+              fill = "lightblue", alpha = 0.4) +
+  labs(title = "Mean accuracy with SD", 
+       x = "Trial", 
+       y = "Mean accuracy") +
+  theme_minimal()
+
+ #Create new columns for ymin and ymax (mean_acc ± sd)
+data <- mean_trial_acc %>%
+  mutate(ymin = mean_acc - mean_acc_sd,
+         ymax = mean_acc + mean_acc_sd)
+
+# Apply LOESS smoothing for mean_acc, ymin, and ymax
+smooth_data <- data %>%
+  mutate(mean_acc_smooth = predict(loess(mean_acc ~ trial_n, data = data)),
+         ymin_smooth = predict(loess(ymin ~ trial_n, data = data)),
+         ymax_smooth = predict(loess(ymax ~ trial_n, data = data)))
+
+# Create the plot with smoothed line and ribbon
+ggplot(smooth_data, aes(x = trial_n)) +
+  geom_ribbon(aes(ymin = ymin_smooth, ymax = ifelse(ymax_smooth>1,1,ymax_smooth)), fill = "lightblue", alpha = 0.4) +  # Smoothed SD ribbon
+  geom_line(aes(y = mean_acc_smooth), color = "blue", size = 1.2) +                          # Smoothed line
+  labs(title = "Smoothed Median Reaction Time with Smoothed SD", 
+       x = "Trial", 
+       y = "Median Reaction Time (ms)") +
+  theme_minimal()
+
+
+
+
+```
+
+### Check trial median RT
+
+```{r}
+
+
+boxplot(check_summary$differences_RT, main="Boxplot of RT Differences", ylab="Difference between first half and second half")
+
+shapiro_test <- shapiro.test(check_summary$differences_RT)
+
+t.test(check_summary$median_RT_1, check_summary$median_RT_2, paired=TRUE)
+
+print('PAIRED WILCOXON SIGNED-RANK TEST')
+wilcox.test(check_summary$median_RT_1, check_summary$median_RT_2, paired=TRUE)
+
+
+mean_values_RT = data.frame(
+  Condition = c("First", "Second"),
+  Mean = c(mean(check_summary$mean_RT_1), mean(check_summary$mean_RT_2)),
+  SE = c((sd(check_summary$mean_RT_1) / sqrt(length(check_summary$mean_RT_1))), 
+         (sd(check_summary$mean_RT_2) / sqrt(length(check_summary$mean_RT_2))))
+  
+)
+
+# Create the bar plot
+ggplot(mean_values_RT, aes(x = Condition, y = Mean, fill = Condition)) +
+  geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin = Mean - SE, ymax = Mean + SE), width = 0.2) +
+  labs(title = "Mean RTuracy of All Participants", y = "Mean RTuracy", x = "") +
+  theme_minimal()
+
+
+mean_trial_values = check_df %>% 
+  group_by(trial_n) %>% 
+  summarise(median_RT = median(check_button.rt, na.rm=TRUE), median_rt_sd = sd(check_button.rt, na.rm=TRUE))
+
+# Create the plot
+ggplot(mean_trial_values, aes(x = trial_n, y = median_RT)) +
+  geom_line(color = "blue", size = 1.2) +                          # Line plot for median_RT
+  geom_ribbon(aes(ymin = ifelse((median_RT - median_rt_sd) < 0, 0, median_RT - median_rt_sd), ymax = median_RT + median_rt_sd),   # Shaded area for SD
+              fill = "lightblue", alpha = 0.4) +
+  labs(title = "Median Reaction Time with SD", 
+       x = "Trial", 
+       y = "Median Reaction Time (ms)") +
+  theme_minimal()
+
+# Create new columns for ymin and ymax (median_RT ± sd)
+data <- mean_trial_values %>%
+  mutate(ymin = median_RT - median_rt_sd,
+         ymax = median_RT + median_rt_sd)
+
+# Apply LOESS smoothing for median_RT, ymin, and ymax
+smooth_data <- data %>%
+  mutate(median_RT_smooth = predict(loess(median_RT ~ trial_n, data = data)),
+         ymin_smooth = predict(loess(ymin ~ trial_n, data = data)),
+         ymax_smooth = predict(loess(ymax ~ trial_n, data = data)))
+
+# Create the plot with smoothed line and ribbon
+ggplot(smooth_data, aes(x = trial_n)) +
+  geom_ribbon(aes(ymin = ifelse(ymin_smooth<0,0,ymin_smooth), ymax = ymax_smooth), fill = "lightblue", alpha = 0.4) +  # Smoothed SD ribbon
+  geom_line(aes(y = median_RT_smooth), color = "blue", size = 1.2) +                          # Smoothed line
+  labs(title = "Smoothed Median Reaction Time with Smoothed SD", 
+       x = "Trial", 
+       y = "Median Reaction Time (ms)") +
+  theme_minimal()
+
+```
+
+
+
+# Test trials - ANOVA
+
+### test trials mean accuracy
+
+```{r}
+
+test_df = read.csv('raw_behavioural/EX1_adult_overall_test.csv')
+
+test_summary_acc = test_df %>% 
+  mutate(centre_distance = ifelse(centre_distance == 1, 'close', ifelse(centre_distance == 2, 'mid', 'far'))) %>% 
+  group_by(participant, centre_distance) %>%
+  summarise(mean_acc = mean(test_button.corr)) %>% 
+  pivot_wider(id_cols = participant, names_from = centre_distance, values_from = mean_acc) %>% 
+  filter(participant != 'A004') 
+
+test_summary_RT = test_df %>% 
+  mutate(centre_distance = ifelse(centre_distance == 1, 'close', ifelse(centre_distance == 2, 'mid', 'far'))) %>% 
+  filter(test_button.corr != 0) %>% 
+  filter(test_button.rt > 0.2) %>% 
+  filter(participant != 'A004') %>% 
+  group_by(participant, centre_distance) %>%
+  summarise(median_RT = median(RT.corrected, na.rm=TRUE)) %>% 
+  pivot_wider(id_cols = participant, names_from = centre_distance, values_from = median_RT)
+
+test_summary_RT_mean = test_df %>% 
+  mutate(centre_distance = ifelse(centre_distance == 1, 'close', ifelse(centre_distance == 2, 'mid', 'far'))) %>% 
+  filter(test_button.corr != 0) %>% 
+  filter(test_button.rt > 0.2) %>% 
+  filter(participant != 'A004') %>% 
+  group_by(participant, centre_distance) %>%
+  summarise(median_RT = mean(RT.corrected, na.rm=TRUE)) %>% 
+  pivot_wider(id_cols = participant, names_from = centre_distance, values_from = median_RT)
+  
+  
+
+
+
+```
+
+```{r}
+
+# Load necessary libraries
+library(tidyr)      # For reshaping data
+library(ggplot2)    # For visualizing residuals
+library(car)        # For Mauchly’s test of sphericity
+library(rstatix)    # For ANOVA and post-hoc tests
+library("ggpubr")
+
+# Reshape data to long format for repeated measures ANOVA
+data_long <- test_summary_acc %>%
+  pivot_longer(cols = c(close, mid, far), names_to = "condition", values_to = "value") %>% 
+  ungroup() 
+
+# %>% 
+#   filter(condition != 'far')
+
+# 2. Run the repeated measures ANOVA
+# anova_result <- anova_test(data = data_long, dv = value, wid = participant, within = condition)
+anova_result <- aov(value ~ condition + Error(participant/condition), data = data_long)
+
+# Display ANOVA result
+print(anova_result)
+summary(anova_result)
+
+# Post-hoc comparisons using pairwise t-tests with Bonferroni correction
+post_hoc <- pairwise_t_test(data_long, value ~ condition, paired = TRUE, p.adjust.method = "bonferroni")
+
+# Display post-hoc results
+print(post_hoc)
+
+```
+
+```{r}
+# Reshape data to long format for repeated measures ANOVA
+data_long <- test_summary_RT_mean %>%
+  pivot_longer(cols = c(close, mid, far), names_to = "condition", values_to = "value") %>% 
+  ungroup() 
+
+# %>% 
+#   filter(condition != 'far')
+
+# 2. Run the repeated measures ANOVA
+# anova_result <- anova_test(data = data_long, dv = value, wid = participant, within = condition)
+anova_result <- aov(value ~ condition + Error(participant/condition), data = data_long)
+
+# Display ANOVA result
+print(anova_result)
+summary(anova_result)
+
+# Post-hoc comparisons using pairwise t-tests with Bonferroni correction
+post_hoc <- pairwise_t_test(data_long, value ~ condition, paired = TRUE, p.adjust.method = "bonferroni")
+
+# Display post-hoc results
+print(post_hoc)
+```
+
+# Test trials - GLMM
+
+### Data Prep
+
+```{r}
+
+library(lme4)
+library(broom.mixed)
+library(flexplot)
+library(fitdistrplus)
+library(ggplot2)
+library(statmod) 
+
+## Treat centre distance as factor?
+remove_far = FALSE
+
+if(remove_far){
+  
+  glmm_input_acc = test_df %>%
+  filter(participant != 'A004') %>% 
+  mutate(centre_distance = ifelse(centre_distance == 1, 'close', ifelse(centre_distance == 2, 'mid', 'far'))) %>% 
+  mutate(centre_distance = factor(centre_distance), image_set = factor(image_set))
+
+glmm_input_RT = test_df %>% 
+  filter(participant != 'A004') %>% 
+  filter(test_button.corr != 0) %>% 
+  filter(RT.corrected > 0.2) %>% 
+  filter(RT.corrected < 3) %>% 
+  mutate(centre_distance = ifelse(centre_distance == 1, 'close', ifelse(centre_distance == 2, 'mid', 'far'))) %>% 
+  mutate(centre_distance = factor(centre_distance), image_set = factor(image_set)) %>% 
+  filter(centre_distance != 'far')
+
+} else {
+
+glmm_input_acc = test_df %>%
+  filter(participant != 'A004') %>% 
+  mutate(centre_distance = ifelse(centre_distance == 1, 'close', ifelse(centre_distance == 2, 'mid', 'far'))) %>% 
+  mutate(centre_distance = factor(centre_distance), image_set = factor(image_set))
+
+glmm_input_RT = test_df %>% 
+  filter(participant != 'A004') %>% 
+  filter(test_button.corr != 0) %>% 
+  filter(RT.corrected > 0.2) %>% 
+  filter(RT.corrected < 3) %>% 
+  mutate(centre_distance = ifelse(centre_distance == 1, 'close', ifelse(centre_distance == 2, 'mid', 'far'))) %>% 
+  mutate(centre_distance = factor(centre_distance), image_set = factor(image_set))
+
+}
+```
+
+
+### Accuracy
+
+```{r}
+
+# Load necessary library
+
+
+# Fit the Generalized Linear Mixed Model (GLMM)
+# Using binomial family for proportion data (0-1 scale)
+glmm_model <- glmer(test_button.corr ~ centre_distance + image_set + (image_set | participant),
+                    data = glmm_input_acc, family = binomial)
+
+# Fit the Generalized Linear Mixed Model (GLMM)
+# Using binomial family for proportion data (0-1 scale)
+glmm_model_simple <- glmer(test_button.corr ~ centre_distance + (1 | participant), 
+                    data = glmm_input_acc, family = binomial)
+
+# Display a summary of the model
+summary(glmm_model)
+
+summary(glmm_model_simple)
+
+
+model.comparison(glmm_model, glmm_model_simple)
+
+```
+
+```{r}
+library(emmeans)
+
+# Obtain estimated marginal means for centre_distance
+emm <- emmeans(glmm_model_simple, ~ centre_distance)
+
+# Contrast between "mid" and "far"
+contrast(emm, "pairwise", adjust = "none", levels = c("close", "mid", "far"))
+```
+
+### Distributions
+
+```{r}
+
+# Simulate some data or use your own data (replace with your dataset)
+set.seed(123)
+
+data <- glmm_input_RT$RT.corrected   # Replace this with your data
+
+
+# Fit distributions to the data
+fit_normal <- fitdist(data, "norm")       # Normal distribution
+fit_invgauss <- fitdist(data, "invgauss", start = list(mean = mean(data), shape = 1)) # Inverse Gaussian with starting values
+# Alternatively, use method of moments for inverse Gaussian
+# fit_invgauss <- fitdist(data, "invgauss", method = "mme") 
+
+fit_gamma <- fitdist(data, "gamma")       # Gamma distribution
+
+# Create a sequence of x values for the fitted distributions
+x_values <- seq(min(data), max(data), length.out = 1000)
+
+# Calculate densities for each distribution
+density_normal <- dnorm(x_values, mean = fit_normal$estimate["mean"], sd = fit_normal$estimate["sd"])
+density_invgauss <- dinvgauss(x_values, mean = fit_invgauss$estimate["mean"], 
+                              shape = fit_invgauss$estimate["shape"])
+density_gamma <- dgamma(x_values, shape = fit_gamma$estimate["shape"], 
+                        rate = fit_gamma$estimate["rate"])
+
+# Create a data frame for plotting
+plot_data <- data.frame(
+  x = x_values,
+  normal = density_normal,
+  invgauss = density_invgauss,
+  gamma = density_gamma
+)
+
+# Create the base plot with the histogram of your data
+p <- ggplot() + 
+  geom_histogram(aes(x = data, y = ..density..), bins = 30, fill = "lightblue", alpha = 0.5) + 
+  geom_line(data = plot_data, aes(x = x, y = normal), color = "red", size = 1, linetype = "solid", 
+            show.legend = TRUE, label = "Normal") + 
+  geom_line(data = plot_data, aes(x = x, y = invgauss), color = "blue", size = 1, linetype = "dashed", 
+            show.legend = TRUE, label = "Inverse Gaussian") + 
+  geom_line(data = plot_data, aes(x = x, y = gamma), color = "green", size = 1, linetype = "dotted", 
+            show.legend = TRUE, label = "Gamma") +
+  labs(title = "Data with Fitted Distributions", x = "Values", y = "Density") +
+  theme_minimal()
+
+# Print the plot
+print(p)
+
+```
+
+
+```{r}
+
+
+# Fit the Generalized Linear Mixed Model (GLMM)
+# Using binomial family for proportion data (0-1 scale)
+glmm_model_RT <- glmer(RT.corrected ~ centre_distance + image_set +  (image_set | participant), 
+                    data = glmm_input_RT, family=inverse.gaussian)
+
+# Using binomial family for proportion data (0-1 scale)
+glmm_model_RT_simple <- glmer(RT.corrected ~ centre_distance + (1 | participant), 
+                    data = glmm_input_RT, family=inverse.gaussian)
+
+# Display a summary of the model
+summary(glmm_model_RT)
+visualize(glmm_model_RT,
+          plot="model",
+          sample=24)
+
+# Display a summary of the model
+summary(glmm_model_RT_simple)
+visualize(glmm_model_RT_simple,
+          plot="model",
+          sample=24)
+
+model.comparison(glmm_model_RT, glmm_model_RT_simple)
+
+
+```
+
+```{r}
+library(emmeans)
+
+# Obtain estimated marginal means for centre_distance
+emm <- emmeans(glmm_model_RT_simple, ~ centre_distance)
+
+emm_backtransformed <- regrid(emm)
+
+# Contrast between "mid" and "far"
+contrast(emm_backtransformed, "pairwise", adjust = "none", levels = c("close", "mid", "far"))
+```
+```{r}
+# Relevel centre_distance so that "mid" becomes the reference
+glmm_input_acc$centre_distance <- relevel(glmm_input_acc$centre_distance, ref = "mid")
+
+# Re-run the model
+glmm_model_mid_ref <- glmer(test_button.corr ~ centre_distance + (1 | participant),
+                            data = glmm_input_acc, family = binomial)
+
+# Now the "far" coefficient in the summary will represent the difference between "far" and "mid"
+summary(glmm_model_mid_ref)
+
+```
+
+```{r}
+library(ggeffects)
+
+# Get predicted probabilities from the model
+pred <- ggpredict(glmm_model_simple, terms = "centre_distance")
+pred$x <- factor(pred$x, levels = c("close", "mid", "far"))
+ggplot(pred, aes(x = x, y = predicted, group = 1, ymin = conf.low, ymax = conf.high)) +
+  geom_line() +  # Line plot
+  geom_ribbon(alpha = 0.2) +  # Ribbon for confidence interval
+  labs(x = "Centre Distance", y = "Predicted Probability",
+       title = "Predicted Probabilities by Centre Distance") +
+  theme_minimal()
+
+# Get predicted probabilities from the model
+pred <- ggpredict(glmm_model_RT_simple, terms = "centre_distance")
+pred$x <- factor(pred$x, levels = c("close", "mid", "far"))
+ggplot(pred, aes(x = x, y = predicted, group = 1, ymin = conf.low, ymax = conf.high)) +
+  geom_line() +  # Line plot
+  geom_ribbon(alpha = 0.2) +  # Ribbon for confidence interval
+  labs(x = "Centre Distance", y = "Predicted Probability",
+       title = "Predicted Probabilities by Centre Distance") +
+  theme_minimal()
+
+```
+
+```{r}
+# Extract random effects
+# Get predicted values for centre_distance
+pred <- ggpredict(glmm_model_RT_simple, terms = "centre_distance")
+
+# Reorder factor levels for centre_distance
+pred$x <- factor(pred$x, levels = c("close", "mid", "far"))
+
+# Create a point plot with error bars for confidence intervals
+ggplot(pred, aes(x = x, y = predicted)) +
+  geom_point(size = 3) +  # Plot points for predicted values
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2) +  # Error bars for CI
+  labs(x = "Centre Distance", y = "Predicted Reaction Time",
+       title = "Predicted Reaction Time by Centre Distance") +
+  theme_minimal()
+
+
+```
+```{r}
+library(sjPlot)
+
+# Plot the fixed effects (coefficients) of the model
+plot_model(glmm_model_simple, type = "est", show.values = TRUE, value.offset = 0.3,
+           title = "Fixed Effects Coefficients for GLMM")
+
+```
+
+

@@ -1,0 +1,50 @@
+library("rstudioapi")    
+library(dplyr)
+library(ggplot2)
+library(car)
+library(rstatix)
+library(plotrix)
+library(purrr)
+library(readr)
+library(tools)
+theme_set(theme_classic())
+
+# Sets working directory to current folder and reads in all csv files into one df
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+getwd()
+# Read all CSV files in the directory and add a 'participant' column based on the file name
+df_raw = list.files(path = ".", pattern = "*.csv", full.names = TRUE) %>% 
+  map_df(~read_csv(., show_col_types = FALSE) %>% 
+           mutate(across(everything(), as.character),
+                  participant = file_path_sans_ext(basename(.x)))
+  )
+
+#Selects check trials and creates new DF with subset of columns
+df_raw_check = df_raw %>% 
+  filter(trial_condition == 'Check') %>% 
+  dplyr::select(participant, session, spreadsheet, trial_n, block_n, check_button.corr, check_button.rt) %>% 
+  dplyr::rename(photo_set=session, group=spreadsheet) %>%
+  mutate(learn_half = ifelse(block_n <= 3, 1, 2)) %>% # Adds column to specify if first or second half of learn phase
+  transform(groupname= ifelse(group==1, 'Sequential', 'Non-sequential')) %>%
+  mutate_at(c('trial_n', 'block_n', 'check_button.corr', 'check_button.rt'), as.numeric) %>%
+  mutate_at(c('participant', 'group', 'learn_half'), as.factor) %>% 
+  mutate(trial_n = replace(trial_n, trial_n==171, 22), trial_n = replace(trial_n, trial_n==180, 24), 
+         trial_n = replace(trial_n, trial_n==189, 25), trial_n = replace(trial_n, trial_n==192, 26)) %>%
+  group_by(participant) %>% 
+  ungroup()
+
+write.csv(df_raw_check, 'output/EX2_check_trials.csv')
+
+# Selects test trials and creates new DF with subset of columns
+df_raw_test = df_raw %>% 
+  filter(trial_condition == 'test') %>% 
+  mutate(RT_corrected = as.numeric(test_button.rt) - as.numeric(stim_start) + 0.5) %>% 
+  dplyr::select(participant, session, spreadsheet, trial_n, block_n, symbol_value, centre_distance, test_button.corr, test_button.rt, RT_corrected) %>%
+  rename(photo_set=session, group=spreadsheet)  %>%
+  transform(groupname= ifelse(group==1, 'Sequential', 'Non-sequential')) %>%
+  mutate_at(c('trial_n', 'block_n', 'test_button.corr', 'test_button.rt'), as.numeric) %>% 
+  mutate_at(c('participant', 'group', 'centre_distance'), as.factor) %>%
+  group_by(participant) %>% 
+  ungroup()
+
+write.csv(df_raw_test, 'output/EX2_test_trials.csv')
